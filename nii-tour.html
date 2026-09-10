@@ -467,7 +467,7 @@ function markDone(){
   done.add(step); updateChrome();
   const s=STEPS[step];
   if(s.gesture){
-    tick.textContent = step>=STEPS.length-2 ? 'Nice! That’s the last one' : 'Nice! Hit next when you’re ready';
+    tick.textContent = step>=STEPS.length-2 ? 'Nice! That’s the last one' : 'Nice! Hit next when you’re ready to move to the next one';
     tick.classList.add('on'); clearTimeout(markDone.t);
     markDone.t=setTimeout(()=>tick.classList.remove('on'),2600);
   }
