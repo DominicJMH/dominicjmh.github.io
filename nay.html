@@ -143,8 +143,8 @@ thead th{
   font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3);
   padding:11px 12px; border-bottom:1px solid var(--line-2); white-space:nowrap
 }
-thead th.sortable{cursor:pointer; user-select:none}
-thead th.sortable:hover{color:var(--ink)}
+thead th.sortable,thead th.sortable-d{cursor:pointer; user-select:none}
+thead th.sortable:hover,thead th.sortable-d:hover{color:var(--ink)}
 thead th .arrow{opacity:.35; margin-left:3px}
 thead th[aria-sort] .arrow{opacity:1; color:var(--accent)}
 tbody tr{border-bottom:1px solid var(--line)}
@@ -178,6 +178,9 @@ td{padding:13px 12px; vertical-align:top}
 .area.t1{border-color:var(--accent); color:var(--ink)}
 .area.t1 b{color:var(--accent)}
 .area.b b{color:var(--info)}
+.area.dt1{border-color:var(--accent); color:var(--ink)}
+.area.dt2{border-color:var(--good); color:var(--ink)}
+.area.dt3{border-color:var(--info); color:var(--ink)}
 .legend{
   display:block; font-family:"IBM Plex Sans",sans-serif; font-size:10px;
   letter-spacing:0; text-transform:none; color:var(--ink-3); font-weight:400; margin-top:2px
@@ -250,6 +253,50 @@ select.set,input[type=search].set{border-color:var(--accent); background:var(--a
 
 .empty{padding:50px 10px; text-align:center; color:var(--ink-3)}
 
+/* ---- applied checkbox column ---- */
+td.applied-cell{text-align:center; vertical-align:middle; width:40px}
+td.applied-cell input{width:16px; height:16px; cursor:pointer; accent-color:var(--good)}
+th.applied-hdr{text-align:center; width:40px}
+tr.applied-fade{opacity:.35; transition:opacity .4s ease}
+tr.applied-hidden{display:none!important}
+
+.toggle-applied{
+  font:inherit; font-size:13px; margin-top:16px; cursor:pointer;
+  background:var(--good-soft); color:var(--good);
+  border:1px solid var(--good); border-radius:5px; padding:6px 11px;
+  white-space:nowrap
+}
+.toggle-applied:hover{filter:brightness(.95)}
+.toggle-applied .apcount{font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums}
+
+/* ---- tab switcher ---- */
+.tab-bar{
+  display:flex; gap:0; margin:28px 0 0;
+  border-bottom:2px solid var(--line); position:relative
+}
+.tab-btn{
+  font:inherit; font-family:"IBM Plex Mono",monospace; font-size:13px;
+  letter-spacing:.05em; text-transform:uppercase;
+  padding:12px 22px; cursor:pointer;
+  background:none; border:none; border-bottom:2px solid transparent;
+  margin-bottom:-2px; color:var(--ink-3);
+  transition:color .2s, border-color .2s
+}
+.tab-btn:hover{color:var(--ink)}
+.tab-btn.active{color:var(--accent); border-bottom-color:var(--accent); font-weight:600}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+
+/* Décideurs tier chips */
+.dtier{
+  display:inline-block; font-family:"IBM Plex Mono",monospace; font-size:10.5px;
+  font-weight:500; padding:2px 7px; border-radius:3px;
+  background:var(--surface-2); color:var(--ink-2); border:1px solid var(--line)
+}
+.dtier.dt1{background:var(--accent-soft); color:var(--accent); border-color:transparent; font-weight:600}
+.dtier.dt2{background:var(--good-soft); color:var(--good); border-color:transparent}
+.dtier.dt3{background:var(--info-soft); color:var(--info); border-color:transparent}
+
 footer{
   margin-top:40px; padding-top:18px; border-top:1px solid var(--line);
   font-size:13px; color:var(--ink-3); max-width:72ch
@@ -277,6 +324,8 @@ footer code{
   .areas{max-width:none; min-width:0}
   .route{min-width:0}
 
+  .tab-btn{padding:10px 14px; font-size:12px}
+
   /* stacking the controls makes the sticky bar taller than the content it
      would cover, so let it scroll away */
   .controls{position:static; padding:12px 0}
@@ -284,7 +333,8 @@ footer code{
   input[type=search]{min-width:0; width:100%}
   /* the margin-top on these aligns them with labelled fields in a row; once
      everything is stacked it just adds gaps */
-  .chkrow,.count,button.reset{margin-top:0}
+  .chkrow,.count,button.reset,.toggle-applied{margin-top:0}
+  .toggle-applied{width:100%}
   .count{margin-left:0}
   button.reset{width:100%}
 
@@ -338,6 +388,12 @@ footer code{
 
   <div class="summary" id="summary"></div>
 
+  <div class="tab-bar">
+    <button class="tab-btn active" data-tab="l500ch" type="button">Legal 500 &amp; Chambers</button>
+    <button class="tab-btn" data-tab="decideurs" type="button">D&eacute;cideurs / Leaders League</button>
+  </div>
+
+  <div class="tab-panel active" id="panel-l500ch">
   <div class="controls">
     <div class="field">
       <label for="q">Search firm</label>
@@ -377,6 +433,7 @@ footer code{
       </select>
     </div>
     <label class="chkrow"><input type="checkbox" id="mailable"> Has any email</label>
+    <button class="toggle-applied" id="toggleApplied" type="button" hidden>Show firms already applied (<span class="apcount" id="appliedCount">0</span>)</button>
     <button class="reset" id="reset" type="button">Reset</button>
     <span class="count" id="count"></span>
   </div>
@@ -395,12 +452,72 @@ footer code{
           <th class="sortable" data-k="t">Top tier<span class="arrow">&#9650;</span></th>
           <th>Ranked in <span class="legend">T = Legal 500 tier &middot; B = Chambers band</span></th>
           <th class="sortable" data-k="r">How to apply<span class="arrow">&#9650;</span></th>
+          <th class="applied-hdr">Applied</th>
         </tr>
       </thead>
       <tbody id="body"></tbody>
     </table>
   </div>
   <div class="empty" id="empty" hidden>No firm matches those filters.</div>
+  </div><!-- /panel-l500ch -->
+
+  <div class="tab-panel" id="panel-decideurs">
+  <div class="controls">
+    <div class="field">
+      <label for="dq">Search firm</label>
+      <input type="search" id="dq" placeholder="e.g. Gide, Bredin&hellip;" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="darea">Practice area</label>
+      <select id="darea"><option value="">All areas</option></select>
+    </div>
+    <div class="field">
+      <label for="dtier">Best tier</label>
+      <select id="dtier">
+        <option value="">Any tier</option>
+        <option value="1">Incontournable</option>
+        <option value="2">Excellent</option>
+        <option value="3">Forte notori&eacute;t&eacute;</option>
+        <option value="4">Pratique r&eacute;put&eacute;e</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="droute">Route</label>
+      <select id="droute">
+        <option value="">Any route</option>
+        <option value="email">Recruitment inbox</option>
+        <option value="portal">Careers page</option>
+        <option value="site">Website only</option>
+      </select>
+    </div>
+    <label class="chkrow"><input type="checkbox" id="dmailable"> Has any email</label>
+    <button class="toggle-applied" id="dToggleApplied" type="button" hidden>Show firms already applied (<span class="apcount" id="dAppliedCount">0</span>)</button>
+    <button class="reset" id="dreset" type="button">Reset</button>
+    <span class="count" id="dcount"></span>
+  </div>
+
+  <div class="activebar" id="dactivebar" hidden>
+    <span>Showing <b id="dshown">0</b> of <b id="dtotal">0</b> firms</span>
+    <span class="pills" id="dpills"></span>
+    <button type="button" id="dclearall">Show all firms</button>
+  </div>
+
+  <div class="tablewrap">
+    <table>
+      <thead>
+        <tr>
+          <th class="sortable-d" data-k="n" aria-sort="ascending">Firm<span class="arrow">&#9650;</span></th>
+          <th class="sortable-d" data-k="t">Best tier<span class="arrow">&#9650;</span></th>
+          <th>Ranked in</th>
+          <th class="sortable-d" data-k="r">How to apply<span class="arrow">&#9650;</span></th>
+          <th class="applied-hdr">Applied</th>
+        </tr>
+      </thead>
+      <tbody id="dbody"></tbody>
+    </table>
+  </div>
+  <div class="empty" id="dempty" hidden>No firm matches those filters.</div>
+  </div><!-- /panel-decideurs -->
 
 </div>
 
@@ -436,6 +553,38 @@ areas.forEach(a => {
 });
 
 let sortKey = "n", sortAsc = true;
+
+// ---- "already applied" state ----
+const APPLIED_KEY = "nay-applied-firms";
+const appliedSet = new Set(JSON.parse(localStorage.getItem(APPLIED_KEY) || "[]"));
+let hideApplied = true;
+
+function saveApplied() {
+  localStorage.setItem(APPLIED_KEY, JSON.stringify([...appliedSet]));
+  updateAppliedUI();
+}
+
+function updateAppliedUI() {
+  const btn = document.getElementById("toggleApplied");
+  const n = appliedSet.size;
+  document.getElementById("appliedCount").textContent = n;
+  btn.hidden = n === 0;
+
+  document.querySelectorAll(".applied-chk").forEach(chk => {
+    const tr = chk.closest("tr");
+    if (chk.checked) {
+      if (hideApplied) {
+        tr.classList.add("applied-hidden");
+        tr.classList.remove("applied-fade");
+      } else {
+        tr.classList.remove("applied-hidden");
+        tr.classList.add("applied-fade");
+      }
+    } else {
+      tr.classList.remove("applied-fade", "applied-hidden");
+    }
+  });
+}
 
 function render() {
   const q = document.getElementById("q").value.trim().toLowerCase();
@@ -556,8 +705,10 @@ function render() {
         : `<span class="tier ${r.t === 1 ? "t1" : ""}">${r.t}</span>`}</td>
       <td data-l="Ranked in"><div class="areas">${chips}${more}</div>${hidden}</td>
       <td data-l="How to apply"><div class="route">${route}</div></td>
+      <td data-l="Applied" class="applied-cell"><input type="checkbox" class="applied-chk" data-firm="${esc(r.n)}" ${appliedSet.has(r.n) ? "checked" : ""}></td>
     </tr>`;
   }).join("");
+  updateAppliedUI();
 }
 
 document.getElementById("body").addEventListener("click", e => {
@@ -567,6 +718,35 @@ document.getElementById("body").addEventListener("click", e => {
   if (!el) return;
   el.hidden = !el.hidden;
   b.textContent = el.hidden ? `+${b.dataset.n} more` : "show fewer";
+});
+
+// ---- applied checkbox handling ----
+document.getElementById("body").addEventListener("change", e => {
+  const chk = e.target.closest(".applied-chk");
+  if (!chk) return;
+  const firm = chk.dataset.firm;
+  if (chk.checked) appliedSet.add(firm); else appliedSet.delete(firm);
+  saveApplied();
+});
+
+function refreshToggleLabel() {
+  const btn = document.getElementById("toggleApplied");
+  btn.innerHTML = "";
+  btn.appendChild(document.createTextNode(
+    hideApplied ? "Show firms already applied (" : "Hide firms already applied ("
+  ));
+  const countSpan = document.createElement("span");
+  countSpan.className = "apcount";
+  countSpan.id = "appliedCount";
+  countSpan.textContent = appliedSet.size;
+  btn.appendChild(countSpan);
+  btn.appendChild(document.createTextNode(")"));
+}
+
+document.getElementById("toggleApplied").addEventListener("click", () => {
+  hideApplied = !hideApplied;
+  refreshToggleLabel();
+  updateAppliedUI();
 });
 
 document.querySelectorAll("th.sortable").forEach(th => {
@@ -589,6 +769,10 @@ function clearFilters() {
   document.getElementById("route").value = "";
   document.getElementById("src").value = "";
   document.getElementById("mailable").checked = false;
+  if (appliedSet.size > 0 && hideApplied) {
+    hideApplied = false;
+    refreshToggleLabel();
+  }
   render();
   showFromTop();
 }
@@ -617,4 +801,346 @@ function showFromTop() {
 }
 
 render();
+
+// ========================================================
+// TAB SWITCHING
+// ========================================================
+document.querySelectorAll(".tab-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("panel-" + btn.dataset.tab).classList.add("active");
+    measureControls();
+  });
+});
+
+// ========================================================
+// DÉCIDEURS / LEADERS LEAGUE TAB
+// ========================================================
+const TIER_LABELS = {1:"Incontournable",2:"Excellent",3:"Forte notoriété",4:"Pratique réputée",5:"Pratique de qualité"};
+const TIER_CLS = {1:"dt1",2:"dt2",3:"dt3",4:"",5:""};
+
+const DDATA = [
+  {n:"A&O Shearman",w:"https://www.aoshearman.com",c:"https://careers.aoshearman.com/location/paris-jobs/3392/3017382-3012874-2988507/4",e:null,ce:null,city:"Paris",
+   a:[["Asset Management",1],["Commercial Litigation (>100M€)",2],["Criminal Labor Law",2],["International Arbitration",3]],t:1},
+  {n:"Gide Loyrette Nouel",w:"https://www.gide.com",c:null,e:"contact-recrutement@gide.com",ce:null,city:"Paris",
+   a:[["Asset Management",1],["Development Capital",1],["Management Packages",1],["M&A",1]],t:1},
+  {n:"Bredin Prat",w:"https://www.bredinprat.com",c:"https://carriere.bredinprat.com",e:"apply@bredinprat.recruitee-mail.com",ce:null,city:"Paris",
+   a:[["Commercial Litigation (>100M€)",1],["Restructuring / Insolvency",1]],t:1},
+  {n:"Darrois Villey Maillot Brochier",w:"https://www.darrois.com",c:"https://www.darrois.com/en/careers/",e:"recrutement@darroisvilley.com",ce:null,city:"Paris",
+   a:[["International Arbitration",3],["M&A",1]],t:1},
+  {n:"August Debouzy",w:"https://www.august-debouzy.com",c:"https://jobs.layan.eu/fr/august-debouzy",e:"sbiguet@augdeb.com",ce:null,city:"Paris",
+   a:[["Commercial Litigation (>100M€)",3],["Mediation",1],["Patent Litigation",1],["Data & Cybersecurity",1],["IT, Software & Digital",1]],t:1},
+  {n:"Clifford Chance",w:"https://www.cliffordchance.com",c:"https://jobs.cliffordchance.com/fr",e:null,ce:null,city:"Paris",
+   a:[["Asset Management",2],["International Arbitration",2],["Patent Litigation",2]],t:2},
+  {n:"CMS Francis Lefebvre",w:"https://cms.law/fr/fra",c:"https://cms.law/fr/fra/nos-offres/votre-candidature/avocats",e:null,ce:null,city:"Neuilly-sur-Seine",
+   a:[["Development Capital",2],["Asset Management",2]],t:2},
+  {n:"Fidal",w:"https://www.fidal.com",c:null,e:"recrutement.fidal@fidal.com",ce:null,city:"Paris La Défense",
+   a:[["Mediation",1]],t:1},
+  {n:"Cleary Gottlieb",w:"https://www.clearygottlieb.com",c:"https://www.clearygottlieb.com/locations/paris",e:"parislegalrecruit@cgsh.com",ce:null,city:"Paris",
+   a:[["Commercial Litigation (>100M€)",2]],t:2},
+  {n:"Hogan Lovells",w:"https://www.hoganlovells.com",c:"https://www.hoganlovells.com/fr/global-careers/careers-in-france",e:"parisrecrutement@hoganlovells.com",ce:null,city:"Paris",
+   a:[["Commercial Litigation (>100M€)",2],["Patent Litigation",2]],t:2},
+  {n:"Herbert Smith Freehills Kramer",w:"https://www.hsfkramer.com",c:"https://careers.hsfkramer.com/global/fr/paris/professionals",e:"graduatesUK@hsf.com",ce:null,city:"Paris",
+   a:[["Commercial Litigation (>100M€)",2],["International Arbitration",3]],t:2},
+  {n:"Freshfields Bruckhaus Deringer",w:"https://www.freshfields.com",c:"https://www.freshfields.com/en/your-career/france",e:null,ce:null,city:"Paris",
+   a:[["Mediation",1],["International Arbitration",3]],t:1},
+  {n:"De Pardieu Brocas Maffei",w:"https://www.de-pardieu.com",c:null,e:"recrutement2@de-pardieu.com",ce:"info@de-pardieu.com",city:"Paris",
+   a:[["Real Estate Development",1],["M&A (>500M€)",1]],t:1},
+  {n:"Linklaters",w:"https://www.linklaters.com",c:"https://careers.linklaters.com/fr-fr/early-careers",e:"trainee.recruitment@linklaters.com",ce:null,city:"Paris",
+   a:[["Commercial Litigation (>100M€)",3],["Tax",1]],t:1},
+  {n:"Latham & Watkins",w:"https://www.lw.com",c:"https://www.lwcareers.com/en/beginning-your-legal-career/france",e:"AssociateRecruiting.PA@lw.com",ce:null,city:"Paris",
+   a:[["Commercial Litigation (>100M€)",3],["Private Equity",1]],t:1},
+  {n:"White & Case",w:"https://www.whitecase.com",c:"https://www.whitecase.com/careers",e:null,ce:null,city:"Paris",
+   a:[["Commercial Litigation (>100M€)",2],["Development Capital",2],["Asset Management",3]],t:2},
+  {n:"Jones Day",w:"https://www.jonesday.com",c:"https://www.jonesday.com/en/careers/locations/france",e:"parishr@jonesday.com",ce:null,city:"Paris",
+   a:[["Asset Management",3]],t:3},
+  {n:"Orrick",w:"https://www.orrick.com",c:"https://www.orrick.com/en/Careers/Global-locations/Careers-in-France",e:"ckassab@orrick.com",ce:null,city:"Paris",
+   a:[["Commercial Litigation (>100M€)",3],["Development Capital",2]],t:2},
+  {n:"Jeantet",w:"https://www.jeantet.fr",c:null,e:"cverilhac@jeantet.fr",ce:"info@jeantet.fr",city:"Paris",
+   a:[["International Arbitration",3],["Antitrust",2],["State Aid",2],["Merger Control",2]],t:2},
+  {n:"Advant Altana",w:"https://www.advant-altana.com",c:"https://www.advant-altana.com/en/careers",e:"recrutement@advant-altana.com",ce:null,city:"Paris",
+   a:[["Real Estate Development",2],["Mediation",1]],t:1},
+  {n:"Veil Jourde",w:"https://www.veil.fr",c:"https://www.veil.fr/en/recruitment/",e:"t.chasseuil@veil.fr",ce:null,city:"Paris",
+   a:[["Commercial Litigation (>100M€)",3]],t:3},
+  {n:"Racine",w:"https://www.racine.eu",c:"https://www.racine.eu/en/recrutement/candidature/",e:null,ce:"contact@racine.eu",city:"Paris",
+   a:[["Commercial Litigation (>100M€)",3]],t:3},
+  {n:"Proskauer",w:"https://www.proskauer.com",c:"https://www.proskauer.com/careers/recruiting-contacts",e:"graduaterecruitment@proskauer.com",ce:null,city:"Paris",
+   a:[["Development Capital",2]],t:2},
+  {n:"King & Spalding",w:"https://www.kslaw.com",c:"https://www.kslaw.com/careers/early-careers",e:"parisrecruitment@kslaw.com",ce:null,city:"Paris",
+   a:[["International Arbitration",2],["White-Collar Crime",1],["Product Liability",1],["Banking & Finance Litigation",1]],t:1},
+  {n:"Willkie Farr & Gallagher",w:"https://www.willkie.com",c:"https://www.willkie.com/careers/legal-professional/early-careers/discover-more-and-apply/france",e:"crecrutement@willkie.com",ce:null,city:"Paris",
+   a:[["Asset Management",3]],t:3},
+  {n:"Gibson Dunn",w:"https://www.gibsondunn.com",c:null,e:"RecruitingPR@gibsondunn.com",ce:null,city:"Paris",
+   a:[["Distressed M&A",1]],t:1},
+  {n:"DLA Piper",w:"https://www.dlapiper.com",c:"https://careers.dlapiper.com/jobs/index.html?geo=FR-FR",e:"recruitment@dlapiper.com",ce:null,city:"Paris",
+   a:[["Asset Management",3]],t:3},
+  {n:"Dentons",w:"https://www.dentons.com",c:"https://careers.dentons.com/go/Opportunities-in-France/8676802/",e:"antoine.dudziak@dentons.com",ce:null,city:"Paris",
+   a:[["Asset Management",3]],t:3},
+  {n:"Bird & Bird",w:"https://www.twobirds.com",c:"https://www.twobirds.com/fr/careers/france",e:null,ce:"paris@twobirds.com",city:"Paris",
+   a:[["Mediation",1]],t:1},
+  {n:"De Gaulle Fleurance",w:"https://www.dgfla.com",c:"https://www.welcometothejungle.com/fr/companies/de-gaulle-fleurance-associes/jobs",e:null,ce:"contact@dgfla.com",city:"Paris",
+   a:[["Commercial Litigation (>100M€)",3]],t:3},
+  {n:"Simmons & Simmons",w:"https://www.simmons-simmons.com",c:"https://www.simmons-simmons.com/en/about-us/careers/paris-benefits",e:"recruitment@simmons-simmons.com",ce:null,city:"Paris",
+   a:[["Asset Management",3]],t:3},
+  {n:"Osborne Clarke",w:"https://www.osborneclarke.com",c:"https://www.osborneclarke.com/careers/careers-in-france",e:"recrutement@osborneclarke.com",ce:null,city:"Paris",
+   a:[["IT, Software & Digital",1]],t:1},
+  {n:"Watson Farley & Williams",w:"https://www.wfw.com",c:"https://www.wfw.com/careers/",e:null,ce:"paris@wfw.com",city:"Paris",
+   a:[["Commercial Litigation (>100M€)",3]],t:3},
+  {n:"Weil Gotshal & Manges",w:"https://www.weil.com",c:"https://www.weil.com/careers/career-europe/career-paris",e:"parislegalrecruitmentcommittee@weil.com",ce:null,city:"Paris",
+   a:[["Commercial Litigation (>100M€)",2]],t:2},
+  {n:"Sullivan & Cromwell",w:"https://www.sullcrom.com",c:"https://www.sullcrom.com/Careers/Offices/Paris",e:"parisrecruiting@sullcrom.com",ce:null,city:"Paris",
+   a:[["Tax: Transactions",1]],t:1},
+  {n:"Gaillard Banifatemi Shelbaya Disputes",w:null,c:null,e:null,ce:null,city:"Paris",
+   a:[["International Arbitration",1]],t:1},
+  {n:"Clyde & Co",w:"https://www.clydeco.com",c:"https://www.clydeco.com/en/careers",e:null,ce:null,city:"Paris",
+   a:[["International Arbitration",3]],t:3},
+  {n:"BDGS Associés",w:null,c:null,e:null,ce:null,city:"Paris",
+   a:[["Commercial Litigation (>100M€)",3],["M&A (>500M€)",1]],t:1},
+  {n:"Squire Patton Boggs",w:"https://www.squirepattonboggs.com",c:"https://www.squirepattonboggs.com/en/careers",e:null,ce:null,city:"Paris",
+   a:[["International Arbitration",3]],t:3},
+  {n:"Grandjean Avocats",w:null,c:null,e:null,ce:null,city:"Paris",
+   a:[["Commercial Litigation (>100M€)",2]],t:2},
+  {n:"Aramis",w:null,c:null,e:null,ce:null,city:"Paris",
+   a:[["M&A (<75M€)",1]],t:1},
+  {n:"Agilys Avocats",w:null,c:null,e:null,ce:null,city:"Paris",
+   a:[["Small-Cap LBO",1]],t:1},
+  {n:"Yards",w:null,c:null,e:null,ce:null,city:"Paris",
+   a:[["Development Capital",2]],t:2},
+  {n:"Duroc Partners",w:null,c:null,e:null,ce:null,city:"Paris",
+   a:[["Management Packages",1]],t:1},
+  {n:"Jeausserand Audouard",w:null,c:null,e:null,ce:null,city:"Paris",
+   a:[["Management Packages",1]],t:1},
+  {n:"Alerion Avocats",w:"https://www.alerionavocats.com",c:null,e:null,ce:null,city:"Paris",
+   a:[["Development Capital",2],["Contentieux & Arbitrage",2]],t:2},
+  {n:"Cloix Mendès-Gil",w:null,c:null,e:null,ce:null,city:"Paris",
+   a:[["Mediation",1]],t:1},
+  {n:"Lerins",w:null,c:null,e:null,ce:null,city:"Paris",
+   a:[["Mediation",1],["Healthcare / Pharma",1]],t:1},
+  {n:"Benoliel Avocats",w:null,c:null,e:null,ce:null,city:"Paris",
+   a:[["Trademark Litigation",1]],t:1},
+  {n:"Bouchara & Avocats",w:null,c:null,e:null,ce:null,city:"Paris",
+   a:[["Trademark Litigation",1]],t:1},
+  {n:"Casalonga",w:null,c:null,e:null,ce:null,city:"Paris",
+   a:[["Trademark Litigation",1],["Patents: Physics & Mechanics",1]],t:1},
+  {n:"Deprez Guignot Associés",w:null,c:null,e:null,ce:null,city:"Paris",
+   a:[["Trademark Litigation",1]],t:1},
+  {n:"DTMV Avocats",w:null,c:null,e:null,ce:null,city:"Paris",
+   a:[["Trademark Litigation",1],["Patent Litigation",2]],t:1},
+  {n:"Beau De Loménie",w:null,c:null,e:null,ce:null,city:"Paris",
+   a:[["Patents (General)",1],["Electronic & Telecom Patents",1],["Physics & Mechanics Patents",1]],t:1},
+  {n:"Bellenger Blandin Avocats",w:null,c:null,e:null,ce:null,city:"Paris",
+   a:[["Architecture Law",1]],t:1},
+  {n:"Spitz Poulle Kannan",w:null,c:null,e:null,ce:null,city:"Paris",
+   a:[["Asset Management",2]],t:2},
+  {n:"Actance",w:"https://www.actanceavocats.com",c:null,e:null,ce:null,city:"Paris",
+   a:[["Employment / Labor Law",1]],t:1},
+  {n:"Flichy Grangé Avocats",w:"https://www.flichygrange.fr",c:null,e:null,ce:null,city:"Paris",
+   a:[["Employment / Labor Law",1]],t:1},
+  {n:"Capstan Avocats",w:"https://www.capstan.fr",c:null,e:null,ce:null,city:"Paris",
+   a:[["Employment / Labor Law",1]],t:1},
+  {n:"Vogel & Vogel",w:null,c:null,e:null,ce:null,city:"Paris",
+   a:[["Competition / Antitrust",1]],t:1},
+  {n:"Magenta Legal",w:null,c:null,e:null,ce:null,city:"Paris",
+   a:[["Healthcare: Competition & Distribution",1],["Healthcare: Regulatory",3]],t:1}
+];
+
+// sort alpha by default
+DDATA.sort((a, b) => a.n.toLowerCase().localeCompare(b.n.toLowerCase(), "fr"));
+
+// collect areas
+const dAreas = [...new Set(DDATA.flatMap(r => r.a.map(([a]) => a)))].sort((a,b) => a.localeCompare(b,"fr"));
+const dAreaSel = document.getElementById("darea");
+dAreas.forEach(a => { const o = document.createElement("option"); o.value = a; o.textContent = a; dAreaSel.appendChild(o); });
+document.getElementById("dtotal").textContent = DDATA.length;
+
+const dRouteOf = r => r.e ? "email" : r.c ? "portal" : r.w ? "site" : "none";
+const DROUTE_RANK = {email:0, portal:1, site:2, none:3};
+
+let dSortKey = "n", dSortAsc = true;
+
+function dRender() {
+  const q = document.getElementById("dq").value.trim().toLowerCase();
+  const area = dAreaSel.value;
+  const tier = parseInt(document.getElementById("dtier").value || "99", 10);
+  const route = document.getElementById("droute").value;
+  const mailable = document.getElementById("dmailable").checked;
+
+  let out = DDATA.filter(r => {
+    if (q && !r.n.toLowerCase().includes(q)) return false;
+    if (area && !r.a.some(([a]) => a === area)) return false;
+    if (tier !== 99 && r.t > tier) return false;
+    if (route && dRouteOf(r) !== route) return false;
+    if (mailable && !r.e && !r.ce) return false;
+    return true;
+  });
+
+  out.sort((x, y) => {
+    let d;
+    if (dSortKey === "t") d = x.t - y.t;
+    else if (dSortKey === "r") d = DROUTE_RANK[dRouteOf(x)] - DROUTE_RANK[dRouteOf(y)];
+    else d = x.n.toLowerCase().localeCompare(y.n.toLowerCase(), "fr");
+    if (d === 0) d = x.n.toLowerCase().localeCompare(y.n.toLowerCase(), "fr");
+    return dSortAsc ? d : -d;
+  });
+
+  document.getElementById("dcount").textContent =
+    out.length === DDATA.length ? `${DDATA.length} firms` : `${out.length} of ${DDATA.length}`;
+  document.getElementById("dempty").hidden = out.length > 0;
+
+  const active = [];
+  if (q) active.push(["Search", q]);
+  if (area) active.push(["Area", area]);
+  if (tier !== 99) active.push(["Tier", "≤ " + TIER_LABELS[tier]]);
+  if (route) active.push(["Route", document.getElementById("droute").selectedOptions[0].textContent]);
+  if (mailable) active.push(["Email", "Yes"]);
+
+  document.getElementById("dactivebar").hidden = active.length === 0;
+  document.getElementById("dshown").textContent = out.length;
+  document.getElementById("dpills").innerHTML = active
+    .map(([l, v]) => `<span class="pill">${l}: <em>${esc(v)}</em></span>`).join("");
+
+  document.getElementById("dbody").innerHTML = out.map((r, i) => {
+    const chips = r.a.map(([area, t]) => {
+      const cls = TIER_CLS[t] || "";
+      const label = TIER_LABELS[t] || "";
+      return `<span class="area ${cls}" title="${esc(label)}"><b class="dtier ${cls}">${t <= 3 ? label.charAt(0) : "R"}</b>${esc(area)}</span>`;
+    }).join("");
+
+    const kind = dRouteOf(r);
+    let route;
+    if (kind === "email") {
+      route = `<span class="chip email">Recruitment inbox</span>
+        <a href="mailto:${esc(r.e)}">${esc(r.e)}</a>
+        ${r.c ? `<a href="${esc(r.c)}" target="_blank" rel="noopener">careers page</a>` : ""}`;
+    } else if (kind === "portal") {
+      route = `<span class="chip portal">Careers page</span>
+        <a href="${esc(r.c)}" target="_blank" rel="noopener">${esc(r.c.replace(/^https?:\/\//, "").slice(0, 50))}</a>
+        ${r.ce ? `<a href="mailto:${esc(r.ce)}">${esc(r.ce)}</a><span class="nb">General contact, not recruitment</span>` : ""}`;
+    } else if (kind === "site") {
+      route = `<span class="chip site">Website only</span>
+        <span class="nb">No specific recruitment route found</span>`;
+    } else {
+      route = `<span class="chip none">No route</span>
+        <span class="nb">No website or contact found</span>`;
+    }
+
+    const tierLabel = TIER_LABELS[r.t] || "—";
+    const tierCls = TIER_CLS[r.t] || "";
+
+    return `<tr>
+      <td data-l="Firm" class="firm">
+        ${r.w ? `<a href="${esc(r.w)}" target="_blank" rel="noopener">${esc(r.n)}</a>` : esc(r.n)}
+        ${r.city ? `<span class="city">${esc(r.city)}</span>` : ""}
+      </td>
+      <td data-l="Best tier"><span class="dtier ${tierCls}">${esc(tierLabel)}</span></td>
+      <td data-l="Ranked in"><div class="areas">${chips}</div></td>
+      <td data-l="How to apply"><div class="route">${route}</div></td>
+      <td data-l="Applied" class="applied-cell"><input type="checkbox" class="applied-chk" data-firm="${esc(r.n)}" ${appliedSet.has(r.n) ? "checked" : ""}></td>
+    </tr>`;
+  }).join("");
+  dUpdateAppliedUI();
+}
+
+// Décideurs applied UI (shares appliedSet with L500/Chambers tab)
+function dUpdateAppliedUI() {
+  const btn = document.getElementById("dToggleApplied");
+  const n = appliedSet.size;
+  document.getElementById("dAppliedCount").textContent = n;
+  btn.hidden = n === 0;
+
+  document.querySelectorAll("#dbody .applied-chk").forEach(chk => {
+    const tr = chk.closest("tr");
+    if (chk.checked) {
+      if (hideApplied) {
+        tr.classList.add("applied-hidden");
+        tr.classList.remove("applied-fade");
+      } else {
+        tr.classList.remove("applied-hidden");
+        tr.classList.add("applied-fade");
+      }
+    } else {
+      tr.classList.remove("applied-fade", "applied-hidden");
+    }
+  });
+}
+
+// Décideurs checkbox handling (shares appliedSet)
+document.getElementById("dbody").addEventListener("change", e => {
+  const chk = e.target.closest(".applied-chk");
+  if (!chk) return;
+  const firm = chk.dataset.firm;
+  if (chk.checked) appliedSet.add(firm); else appliedSet.delete(firm);
+  saveApplied();
+  dUpdateAppliedUI();
+  updateAppliedUI(); // sync L500 tab too
+});
+
+document.getElementById("dToggleApplied").addEventListener("click", () => {
+  hideApplied = !hideApplied;
+  // refresh both tabs' toggle labels
+  refreshToggleLabel();
+  const dbtn = document.getElementById("dToggleApplied");
+  dbtn.innerHTML = "";
+  dbtn.appendChild(document.createTextNode(
+    hideApplied ? "Show firms already applied (" : "Hide firms already applied ("
+  ));
+  const cs = document.createElement("span");
+  cs.className = "apcount"; cs.id = "dAppliedCount"; cs.textContent = appliedSet.size;
+  dbtn.appendChild(cs);
+  dbtn.appendChild(document.createTextNode(")"));
+  dUpdateAppliedUI();
+  updateAppliedUI();
+});
+
+// Décideurs sorting
+document.querySelectorAll("th.sortable-d").forEach(th => {
+  th.addEventListener("click", () => {
+    const k = th.dataset.k;
+    if (dSortKey === k) dSortAsc = !dSortAsc; else { dSortKey = k; dSortAsc = true; }
+    document.querySelectorAll("th.sortable-d").forEach(o => o.removeAttribute("aria-sort"));
+    th.setAttribute("aria-sort", dSortAsc ? "ascending" : "descending");
+    th.querySelector(".arrow").innerHTML = dSortAsc ? "&#9650;" : "&#9660;";
+    dRender();
+  });
+});
+
+// Décideurs filter listeners
+["dq", "darea", "dtier", "droute", "dmailable"].forEach(id =>
+  document.getElementById(id).addEventListener("input", () => { dRender(); }));
+
+function dClearFilters() {
+  document.getElementById("dq").value = "";
+  dAreaSel.value = "";
+  document.getElementById("dtier").value = "";
+  document.getElementById("droute").value = "";
+  document.getElementById("dmailable").checked = false;
+  if (appliedSet.size > 0 && hideApplied) {
+    hideApplied = false;
+    refreshToggleLabel();
+    const dbtn = document.getElementById("dToggleApplied");
+    dbtn.innerHTML = "";
+    dbtn.appendChild(document.createTextNode("Hide firms already applied ("));
+    const cs = document.createElement("span");
+    cs.className = "apcount"; cs.id = "dAppliedCount"; cs.textContent = appliedSet.size;
+    dbtn.appendChild(cs);
+    dbtn.appendChild(document.createTextNode(")"));
+  }
+  dRender();
+}
+document.getElementById("dreset").addEventListener("click", dClearFilters);
+document.getElementById("dclearall").addEventListener("click", dClearFilters);
+
+// Décideurs "more" button (not needed currently but future-proof)
+document.getElementById("dbody").addEventListener("click", e => {
+  const b = e.target.closest(".more");
+  if (!b) return;
+  const el = document.getElementById("drest-" + b.dataset.i);
+  if (!el) return;
+  el.hidden = !el.hidden;
+  b.textContent = el.hidden ? `+${b.dataset.n} more` : "show fewer";
+});
+
+dRender();
 </script>
